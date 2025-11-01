@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 
 # Read the first frame to confirm capturing
-frame = cv.imread('20251101_103702.jpg')
+frame = cv.imread('src/20251101_103702.jpg')
 
 def resizeframe(frame, new_width):
     # Get the original dimensions
@@ -12,19 +12,22 @@ def resizeframe(frame, new_width):
     new_height = int(original_height * aspect_ratio)  # Compute height based on aspect ratio
     return cv.resize(frame, (new_width, new_height))
 
+frame = resizeframe(frame, 700)
+
 # convert image to grayscale
 grayimage = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
-def maskgrayframe(lowerblackvalue, upperblackvalue )
-    lower_black, upper_black = np.array([lowerblackvalue]), np.array([upper])
-    mask = cv.inRange(grayimage, lower_black, upper_black)
+def maskgrayframe(maskingframe, lowerblackvalue, upperblackvalue):
+    lower_black, upper_black = np.array([lowerblackvalue]), np.array([upperblackvalue])
+    mask = cv.inRange(maskingframe, lower_black, upper_black)
     blank = np.zeros((747, 714), dtype='uint8')
-    grayimage = cv.blur(~mask, (9, 9))
+    return cv.blur(~mask, (9, 9))
 
+maskedimage = maskgrayframe(grayimage, 0, 200)
 
 # Detect circles
 circles = cv.HoughCircles(
-    grayimage,
+    maskedimage,
     cv.HOUGH_GRADIENT,
     dp=1,
     minDist=400,      
