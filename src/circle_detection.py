@@ -1,5 +1,5 @@
-import cv2 as cv
 import numpy as np
+import cv2 as cv
 
 # Read the first frame to confirm capturing
 frame = cv.imread('src/20251101_103702.jpg')
@@ -44,7 +44,6 @@ for i in circles[0,:]:
     cv.circle(frame,(i[0],i[1]),i[2],(0,255,0),2)
     # draw the center of the circle
     cv.circle(frame,(i[0],i[1]),2,(40,30,200),3)
-
 
 # Show result
 cv.imshow('Detected Circle', frame)
