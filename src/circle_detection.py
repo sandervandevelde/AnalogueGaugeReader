@@ -3,7 +3,7 @@ import numpy as np
 import cv2 as cv
 
 # Read the first frame to confirm capturing
-frame = cv.imread('src/images/20251102_142248.jpg')
+frame = cv.imread('src/images/20251101_103702.jpg')
 
 def resizeframe(frame, new_width):
     # Get the original dimensions
@@ -61,14 +61,35 @@ if lines is not None:
             cv.line(frame, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
 else:
     print("no lines found")
-#calculation of the hygro reading
-# where the 0.17 is a correction for the rotation of the meter
-# 1.5 pi is the radian of the meter
 
+# calculation of the angle that the line is drawn at and which side it is pointing to
+def calculateangle(lines,circles, correctiondegrees):
+    circlex = circles[0][0][0]
+    circley = circles[0][0][1]
+    x1 = lines[0][0][0]
+    y1 = lines[0][0][1]
+    x2 = lines[0][0][2]
+    y2 = lines[0][0][3]
 
+    distancecircle1 = math.sqrt((x1-circlex)**2+ (y1-circley)**2)
+    distancecircle2 = math.sqrt((x2-circlex)**2+ (y2-circley)**2)
+    if distancecircle1 >= distancecircle2:
+        angle = math.degrees(math.atan2(y1-circley, x1-circlex))
+    else:
+        angle = math.degrees(math.atan2(y2-circley, x2-circlex))
+    totalangle = correctiondegrees+angle
+
+    return totalangle
+
+# call function to calculate the angle required to calculate the hygro value
+# the value of 140 is for the offset of the 0 value (should be on the Y value of the circle center on the right hand side) in degrees
+totalangle = calculateangle(lines,circles, 140)
+
+# calculation of the hygro reading
+# 270 is the measuring degrees of the hygro meter
 try:
-    hygro_reading = (1+0.17*1.5*math.pi)/(1.5*math.pi)
-    print(hygro_reading)
+    hygro_reading = (totalangle)/(270)
+    print(f"{hygro_reading*100:.0f}%")
 except:
     print("No reading possible")
 
