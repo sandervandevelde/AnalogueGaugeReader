@@ -92,6 +92,8 @@ try:
     print(f"{hygro_reading*100:.0f}%")
 except:
     print("No reading possible")
+frame = cv.putText(frame, f"Humidity: {hygro_reading*100:.0f}%", (00, 200), cv.FONT_HERSHEY_SIMPLEX, 
+                   1, (255,255,255), 2, cv.LINE_AA)
 
 # Show result
 cv.imshow('Detected Circle', frame)
