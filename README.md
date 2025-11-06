@@ -34,14 +34,19 @@ Using the cv.HoughCircles() command we can find the circles in the image and thu
 
 ![image info](./src/images/circle_detected_20251101_103702.jpg)
 
-# Step 4: Detect the pointer
+# Step 4: Outline image
+To help the line detection algorithm we will apply a so called canny filter. This will do some edge detection for us and after parameter tuning we get the image below as a result.
+
+![image info](./src/images/outlined_image_20251101_103702.jpg)
+
+# Step 5: Detect the pointer
 
 This section is currently based on the fact only 1 line has been found, there will be a branch at some point where code will be written to detect which lines are of interest.
 
 Similarly to cv.HoughCircles() there is a command in OpenCV that detects lines. This comes in two flavours cv.HoughLines() and cv.HoughLinesP(). The difference is that HoughLines works using the polar coordinate system (radius and angle) and HoughlinesP (the p stands for probabilistic) the Cartesian coordinate system (x and y). HoughlinesP is considered more efficient and gives use the start and end coordinates which is also simpler to work with. Given the the coordinates we can draw the line onto the image, see picture. 
 ![image info](./src/images/pointer_detected_20251101_103702.jpg)
 
-# Step 5: Calculate the angle
+# Step 6: Calculate the angle
 The next step is to calculate the angle of our point. This is not that hard to do since we have the 3 required points. we have one that describes the start of the line, one the ending of the line and one the middle of the detected circle. To check which direction we are point we take the bigger value of the formula below:
 
  $Distance = \sqrt{(X_{in} - X_{circle})^2 + (Y_{in} - Y_{circle})^2}$
@@ -57,3 +62,5 @@ This angle will give use the angle between the positive X-axis, actually we get 
 $hygroreading =  totalangle / 270$
 
 In this case the hygro reading is about 73%! Looking back at the very first image, this seems to match pretty well (considering I compensated the offset angle by knowing the true value, which is very cheeky, but we will solve this problem in another section once I found a reliable way to solve this).
+
+![image info](./src/images/reading_showing_20251101_103702.jpg)
