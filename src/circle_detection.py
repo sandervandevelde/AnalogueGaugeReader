@@ -14,7 +14,7 @@ def resizeframe(frame, new_width):
 def maskgrayframe(maskingframe, lowerblackvalue, upperblackvalue):
     lower_black, upper_black = np.array([lowerblackvalue]), np.array([upperblackvalue])
     mask = cv.inRange(maskingframe, lower_black, upper_black)
-    return cv.blur(~mask, (7, 7))
+    return cv.blur(~mask, (5, 5))
 
 def calculateangle(lines,circles, correctiondegrees):
     circlex = circles[0][0][0]
@@ -31,7 +31,6 @@ def calculateangle(lines,circles, correctiondegrees):
     else:
         angle = math.degrees(math.atan2(y2-circley, x2-circlex))
     totalangle = correctiondegrees+angle
-
     return totalangle
 
 capturedevice = cv.VideoCapture(0)
@@ -48,17 +47,17 @@ while True:
     # convert image to grayscale
     grayimage = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
-    maskedimage = maskgrayframe(grayimage, 0, 130)
+    maskedimage = maskgrayframe(grayimage, 0, 90)
 
     circles = cv.HoughCircles(
         maskedimage,
         cv.HOUGH_GRADIENT,
         dp=1,
         minDist=400,      
-        param1=50,         
-        param2=100,       
-        minRadius=100,       
-        maxRadius=180
+        param1=40,         
+        param2=80,
+        minRadius=50,       
+        maxRadius=95
     )
 
     if circles is not None:
@@ -72,8 +71,8 @@ while True:
             cv.circle(mask, (i[0],i[1]), i[2], 255, -1)
             maskedimage = cv.bitwise_and(maskedimage, maskedimage, mask=mask)
 
-    outlinedimage = cv.Canny(maskedimage, 40, 100, None, 3)    
-    lines = cv.HoughLinesP(outlinedimage, 1, np.pi / 90, 70, None, minLineLength = 110, maxLineGap= 8)
+    outlinedimage = cv.Canny(maskedimage, 100, 300, None, 5)    
+    lines = cv.HoughLinesP(outlinedimage, 1, np.pi / 180, 60, None, minLineLength = 60, maxLineGap= 10)
     if lines is not None:
         if len(lines) > 1:
             print("multiple lines found")
