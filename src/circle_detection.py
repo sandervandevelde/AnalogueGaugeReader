@@ -7,13 +7,6 @@ from datetime import datetime, timezone
 import paho.mqtt.publish as publish
 from credentials import login, ip
 
-broker_address = "localhost"
-broker_port = 1883
-
-devicename = "visiontest"
-
-topic = f"vision/guage/{devicename}"
-hygro_reading = 0
 # Helper functions
 def resizeframe(frame, new_width):
     # Get the original dimensions
@@ -45,44 +38,73 @@ def calculateangle(lines,circles, correctiondegrees):
     totalangle = correctiondegrees+angle
     return totalangle
 
-capturedevice = cv.VideoCapture('rtsp://'+login+'@'+ip+'/stream1')
+debug = True
+broker_address = "localhost"
+broker_port = 1883
+
+devicename = "visiontest"
+
+topic = f"vision/guage/{devicename}"
+hygro_reading = 0
+count = 0
+framecount = 30
+
+try:
+    capturedevice = cv.VideoCapture('rtsp://'+login+'@'+ip+'/stream1')
+except:
+    errordatadictionary = {"key": "error", "value":'Can not create videocapture device', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
+    payload = json.dumps(errordatadictionary, default=str)
+    publish.single(topic+"/telemetry", payload, hostname=broker_address, port=broker_port)
+    
+
 if not capturedevice.isOpened():
-    print("Can't open camera")
+    errordatadictionary = {"key": "error", "value":'Can not create videocapture device', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
+    payload = json.dumps(errordatadictionary, default=str)
+    publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port)
     exit()
 
-count = 0
-
 while True:
-    ret, frame = capturedevice.read()
+    try:
+        ret, frame = capturedevice.read()
 
-    frame = resizeframe(frame, 700)
-    
-    # convert image to grayscale
-    grayimage = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        frame = resizeframe(frame, 700)
+    except:
+        errordatadictionary = {"key": "error", "value":'Can not read frame', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
+        payload = json.dumps(errordatadictionary, default=str)
+        publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port)
 
-    maskedimage = maskgrayframe(grayimage, 0, 90)
+    try:
+        # convert image to grayscale
+        grayimage = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
-    circles = cv.HoughCircles(
-        maskedimage,
-        cv.HOUGH_GRADIENT,
-        dp=1,
-        minDist=400,      
-        param1=40,         
-        param2=80,
-        minRadius=50,       
-        maxRadius=95
-    )
+        maskedimage = maskgrayframe(grayimage, 0, 90)
 
-    if circles is not None:
-        circles = np.uint16(np.around(circles))
-        for i in circles[0,:]:
-            #draw outer circles
-            cv.circle(frame,(i[0],i[1]),i[2],(0,255,0),2)
-            #draw inner circles
-            cv.circle(frame,(i[0],i[1]),2,(40,30,200),3)
-            mask = np.zeros(maskedimage.shape[:2], dtype="uint8")
-            cv.circle(mask, (i[0],i[1]), i[2], 255, -1)
-            maskedimage = cv.bitwise_and(maskedimage, maskedimage, mask=mask)
+        circles = cv.HoughCircles(
+            maskedimage,
+            cv.HOUGH_GRADIENT,
+            dp=1,
+            minDist=400,      
+            param1=40,         
+            param2=80,
+            minRadius=50,       
+            maxRadius=95
+        )
+
+        if circles is not None:
+            circles = np.uint16(np.around(circles))
+            for i in circles[0,:]:
+                #draw outer circles
+                cv.circle(frame,(i[0],i[1]),i[2],(0,255,0),2)
+                #draw inner circles
+                cv.circle(frame,(i[0],i[1]),2,(40,30,200),3)
+                mask = np.zeros(maskedimage.shape[:2], dtype="uint8")
+                cv.circle(mask, (i[0],i[1]), i[2], 255, -1)
+                maskedimage = cv.bitwise_and(maskedimage, maskedimage, mask=mask)
+
+    except:
+        errordatadictionary = {"key": "error", "value":'Can not apply the masking', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
+        payload = json.dumps(errordatadictionary, default=str)
+        publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port)
 
     outlinedimage = cv.Canny(maskedimage, 100, 300, None, 5)    
     lines = cv.HoughLinesP(outlinedimage, 1, np.pi / 180, 60, None, minLineLength = 60, maxLineGap= 10)
@@ -96,8 +118,6 @@ while True:
             for i in range(0, len(lines)):
                 l = lines[i][0]
                 cv.line(frame, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
-    else:
-        print("no lines found")
 
     # calculation of the angle that the line is drawn at and which side it is pointing to
     # call function to calculate the angle required to calculate the hygro value
@@ -113,12 +133,18 @@ while True:
         hygro_reading = (totalangle)/(270)*100
         frame = cv.putText(frame, f"Humidity: {hygro_reading:.0f}%", (00, 200), cv.FONT_HERSHEY_SIMPLEX, 
                     1, (255,255,255), 2, cv.LINE_AA)
-        if count == 0 or count % 30 == 0:
-            datadictionary = {"key": "humidity", "value":int(hygro_reading), "timestamp":datetime.now(timezone.utc), "deviceId":"visiontest"}
+        if count == 0 or count % framecount == 0:
+            datadictionary = {"key": "humidity", "value":int(hygro_reading), "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
             payload = json.dumps(datadictionary, default=str)
             publish.single(topic+"/telemetry", payload, hostname=broker_address, port=broker_port)
     except:
         print("No reading possible")
+
+    if debug == True:
+        linedebugdictionary = {"key": "lines", "value": lines, "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
+        circledebugdictionary = {"key": "circles", "value": circles, "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
+        payload = json.dumps(datadictionary, default=str)
+        publish.single(topic+"/debug", payload, hostname=broker_address, port=broker_port)
 
     # Show result
     cv.imshow('Detected Circle', frame)
