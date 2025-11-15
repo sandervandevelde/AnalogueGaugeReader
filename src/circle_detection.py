@@ -75,7 +75,10 @@ while True:
 
     try:
         # convert image to grayscale
-        grayimage = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        if frame.shape == 3:
+            grayimage = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        else:
+            grayimage = frame
 
         maskedimage = maskgrayframe(grayimage, 0, 90)
 
