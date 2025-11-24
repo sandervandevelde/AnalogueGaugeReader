@@ -4,7 +4,7 @@ import cv2 as cv
 import json
 from datetime import datetime, timezone
 import paho.mqtt.publish as publish
-from credentials import login, ip
+from PIL import Image
 import os
 
 # Helper functions
@@ -38,7 +38,6 @@ def calculateangle(lines,circles, correctiondegrees):
     totalangle = correctiondegrees+angle
     return totalangle
 
-
 webcamip = os.environ['webcamip']
 webcamport = os.environ['webcamport']
 webcamusername = os.environ['webcamusername']
@@ -62,7 +61,7 @@ except:
 try:
     debug = os.environ['debug']=='True'
 except:
-    debug = False
+    debug = True
 
 try:
     framecount = int(os.environ['readingdelay'])
@@ -74,7 +73,7 @@ hygro_reading = 0
 count = 0
 
 try:
-    capturedevice = cv.VideoCapture('rtsp://'+login+'@'+ip+'/stream1')
+    capturedevice = cv.VideoCapture('rtsp://'+webcamusername+':'+webcampassword+'@'+webcamip+':'+webcamport+'/stream1')
 except:
     errordatadictionary = {"key": "error", "value":'Can not create videocapture device', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
     payload = json.dumps(errordatadictionary, default=str)
@@ -98,13 +97,13 @@ while True:
         publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port)
 
     try:
-        # convert image to grayscale
-        if frame.shape == 3:
-            grayimage = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        else:
-            grayimage = frame
+        grayimage = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         maskedimage = maskgrayframe(grayimage, 0, 90)
+
+        if debug == True:
+            im = Image.fromarray(np.uint8(maskedimage))
+            test = im.save(r"/analoguegaugereader/src/debug/ShadeMask.jpg")
 
         circles = cv.HoughCircles(
             maskedimage,
@@ -132,8 +131,22 @@ while True:
         errordatadictionary = {"key": "error", "value":'Can not apply the masking', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
         payload = json.dumps(errordatadictionary, default=str)
         publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port)
+    
+    try:
+        if debug == True:
+            im = Image.fromarray(np.uint8(maskedimage))
+            test = im.save(r"/analoguegaugereader/src/debug/CircleMasked.jpg")
+    except:
+        pass
 
-    outlinedimage = cv.Canny(maskedimage, 100, 300, None, 5)    
+    outlinedimage = cv.Canny(maskedimage, 100, 300, None, 5)
+    try:
+        if debug == True:
+            im = Image.fromarray(np.uint8(outlinedimage))
+            test = im.save(r"/analoguegaugereader/src/debug/CannyOutlined.jpg")
+    except:
+        pass
+
     lines = cv.HoughLinesP(outlinedimage, 1, np.pi / 180, 60, None, minLineLength = 60, maxLineGap= 10)
     if lines is not None:
         if len(lines) > 1:
@@ -168,16 +181,21 @@ while True:
         print("No reading possible")
 
     if debug == True:
-        linedebugdictionary = {"key": "lines", "value": lines, "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
-        circledebugdictionary = {"key": "circles", "value": circles, "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
-        payload = json.dumps(datadictionary, default=str)
-        publish.single(topic+"/debug", payload, hostname=broker_address, port=broker_port)
+        try:
+            linedebugdictionary = {"key": "lines", "value": lines, "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
+            payload = json.dumps(linedebugdictionary, default=str)
+            publish.single(topic+"/debug/lines", payload, hostname=broker_address, port=broker_port)
+            circledebugdictionary = {"key": "circles", "value": circles, "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
+            payload = json.dumps(circledebugdictionary, default=str)
+            publish.single(topic+"/debug/circles", payload, hostname=broker_address, port=broker_port)
+        except:
+            pass
+    # Show result
+    try:
+        if debug == True:
+                im = Image.fromarray(np.uint8(frame))
+                test = im.save(r"/analoguegaugereader/src/debug/ResultImage.jpg")
+    except:
+        pass
 
     count += 1
-    # press q to stop the capturing
-    if cv.waitKey(1) == ord('q'):
-        break
-
-# release the capture device for other programs to use
-capturedevice.release()
-cv.destroyAllWindows()
