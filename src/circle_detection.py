@@ -51,7 +51,7 @@ except:
 try:
     broker_address = os.environ['brokeraddress']
 except:
-    broker_address = "localhost"
+    broker_address = "192.168.3.17"
 
 try:
     devicename = os.environ['devicename']
@@ -68,6 +68,11 @@ try:
 except:
     framecount = 30
 
+try:
+    clientid = os.environ['client_id']
+except:
+    clientid = "vision-1"
+
 topic = f"vision/guage/{devicename}"
 hygro_reading = 0
 count = 0
@@ -77,13 +82,13 @@ try:
 except:
     errordatadictionary = {"key": "error", "value":'Can not create videocapture device', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
     payload = json.dumps(errordatadictionary, default=str)
-    publish.single(topic+"/telemetry", payload, hostname=broker_address, port=broker_port)
+    publish.single(topic+"/telemetry", payload, hostname=broker_address, port=broker_port, client_id=clientid)
     
 
 if not capturedevice.isOpened():
     errordatadictionary = {"key": "error", "value":'Can not create videocapture device', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
     payload = json.dumps(errordatadictionary, default=str)
-    publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port)
+    publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port, client_id=clientid)
     exit()
 
 while True:
@@ -94,7 +99,7 @@ while True:
     except:
         errordatadictionary = {"key": "error", "value":'Can not read frame', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
         payload = json.dumps(errordatadictionary, default=str)
-        publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port)
+        publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port, client_id=clientid)
 
     try:
         grayimage = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -130,7 +135,7 @@ while True:
     except:
         errordatadictionary = {"key": "error", "value":'Can not apply the masking', "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
         payload = json.dumps(errordatadictionary, default=str)
-        publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port)
+        publish.single(topic+"/error", payload, hostname=broker_address, port=broker_port, client_id=clientid)
     
     try:
         if debug == True:
@@ -176,7 +181,7 @@ while True:
         if count == 0 or count % framecount == 0:
             datadictionary = {"key": "humidity", "value":int(hygro_reading), "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
             payload = json.dumps(datadictionary, default=str)
-            publish.single(topic+"/telemetry", payload, hostname=broker_address, port=broker_port)
+            publish.single(topic+"/telemetry", payload, hostname=broker_address, port=broker_port, client_id=clientid)
     except:
         print("No reading possible")
 
@@ -187,7 +192,7 @@ while True:
             publish.single(topic+"/debug/lines", payload, hostname=broker_address, port=broker_port)
             circledebugdictionary = {"key": "circles", "value": circles, "timestamp":datetime.now(timezone.utc), "deviceId":devicename}
             payload = json.dumps(circledebugdictionary, default=str)
-            publish.single(topic+"/debug/circles", payload, hostname=broker_address, port=broker_port)
+            publish.single(topic+"/debug/circles", payload, hostname=broker_address, port=broker_port, client_id=clientid)
         except:
             pass
     # Show result
